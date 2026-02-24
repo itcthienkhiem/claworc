@@ -197,7 +197,7 @@ func (d *DockerOrchestrator) CreateInstance(ctx context.Context, params CreatePa
 			"22/tcp": struct{}{},
 		},
 		Healthcheck: &container.HealthConfig{
-			Test:          []string{"CMD-SHELL", "ss -tlnp | grep -q :22"},
+			Test:          []string{"CMD-SHELL", "bash -c '>/dev/tcp/127.0.0.1/22'"},
 			Interval:      30_000_000_000,
 			Timeout:       10_000_000_000,
 			Retries:       3,

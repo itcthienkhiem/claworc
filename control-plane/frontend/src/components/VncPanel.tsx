@@ -1,15 +1,13 @@
-import { useCallback, useRef } from "react";
+import { useCallback, useRef, type Ref } from "react";
 import { Wifi, WifiOff, Loader2, RefreshCw, Maximize, ExternalLink, MessageSquare } from "lucide-react";
 import type { DesktopConnectionState } from "@/hooks/useDesktop";
 
 interface VncPanelProps {
   instanceId: number;
   connectionState: DesktopConnectionState;
-  desktopUrl: string;
-  setIframe: (el: HTMLIFrameElement | null) => void;
-  onLoad: () => void;
-  onError: () => void;
+  containerRef: Ref<HTMLDivElement>;
   reconnect: () => void;
+  sendCtrlAltDel: () => void;
   chatOpen?: boolean;
   onChatToggle?: () => void;
   showNewWindow?: boolean;
@@ -48,11 +46,9 @@ function ConnectionIndicator({ state }: { state: DesktopConnectionState }) {
 export default function VncPanel({
   instanceId,
   connectionState,
-  desktopUrl,
-  setIframe,
-  onLoad,
-  onError,
+  containerRef,
   reconnect,
+  sendCtrlAltDel,
   chatOpen,
   onChatToggle,
   showNewWindow = true,
@@ -89,6 +85,15 @@ export default function VncPanel({
             <RefreshCw size={14} />
           </button>
         )}
+        {connectionState === "connected" && (
+          <button
+            onClick={sendCtrlAltDel}
+            className="flex items-center gap-1 px-1.5 py-1 text-xs text-gray-400 hover:text-white rounded"
+            title="Send Ctrl+Alt+Del"
+          >
+            Ctrl+Alt+Del
+          </button>
+        )}
         <div className="flex-1" />
         {showNewWindow && (
           <button
@@ -108,13 +113,9 @@ export default function VncPanel({
         </button>
         <ConnectionIndicator state={connectionState} />
       </div>
-      <iframe
-        ref={setIframe}
-        src={connectionState !== "disconnected" ? desktopUrl : undefined}
-        onLoad={onLoad}
-        onError={onError}
-        className="flex-1 w-full border-0 bg-gray-900"
-        allow="clipboard-read; clipboard-write"
+      <div
+        ref={containerRef}
+        className="flex-1 w-full bg-gray-900"
       />
     </div>
   );

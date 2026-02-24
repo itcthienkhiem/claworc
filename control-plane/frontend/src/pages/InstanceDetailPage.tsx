@@ -615,11 +615,9 @@ export default function InstanceDetailPage() {
                 <VncPanel
                   instanceId={instanceId}
                   connectionState={desktopHook.connectionState}
-                  desktopUrl={desktopHook.desktopUrl}
-                  setIframe={desktopHook.setIframe}
-                  onLoad={desktopHook.onLoad}
-                  onError={desktopHook.onError}
+                  containerRef={desktopHook.containerRef}
                   reconnect={desktopHook.reconnect}
+                  sendCtrlAltDel={desktopHook.sendCtrlAltDel}
                   chatOpen={false}
                   showNewWindow={false}
                 />

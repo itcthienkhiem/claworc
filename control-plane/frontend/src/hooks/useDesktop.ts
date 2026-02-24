@@ -1,4 +1,5 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
+import RFB from "@novnc/novnc";
 
 export type DesktopConnectionState =
   | "disconnected"
@@ -8,58 +9,87 @@ export type DesktopConnectionState =
 
 export function useDesktop(instanceId: number, enabled: boolean) {
   const [connectionState, setConnectionState] =
-    useState<DesktopConnectionState>(enabled ? "connecting" : "disconnected");
-  const iframeRef = useRef<HTMLIFrameElement | null>(null);
-  const [reloadKey, setReloadKey] = useState(0);
+    useState<DesktopConnectionState>("disconnected");
+  const containerRef = useRef<HTMLDivElement>(null);
+  const rfbRef = useRef<RFB | null>(null);
+  const [connectTrigger, setConnectTrigger] = useState(0);
 
-  const desktopUrl = `/api/v1/instances/${instanceId}/desktop/`;
-
-  const setIframe = useCallback(
-    (el: HTMLIFrameElement | null) => {
-      iframeRef.current = el;
-      if (el && enabled) {
-        setConnectionState("connecting");
-      }
-    },
-    [enabled],
-  );
-
-  const onLoad = useCallback(() => {
-    if (enabled) {
-      setConnectionState("connected");
+  const connect = useCallback(() => {
+    // Disconnect any existing session
+    if (rfbRef.current) {
+      try { rfbRef.current.disconnect(); } catch { /* ignore */ }
+      rfbRef.current = null;
     }
-  }, [enabled]);
 
-  const onError = useCallback(() => {
-    setConnectionState("error");
-  }, []);
+    const container = containerRef.current;
+    if (!container || !enabled) {
+      setConnectionState("disconnected");
+      return;
+    }
+
+    const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
+    const wsUrl = `${proto}//${window.location.host}/api/v1/instances/${instanceId}/desktop/websockify`;
+
+    setConnectionState("connecting");
+
+    try {
+      const rfb = new RFB(container, wsUrl);
+      rfb.scaleViewport = true;
+      rfb.resizeSession = false;
+      rfb.background = "rgb(17, 24, 39)"; // gray-900
+
+      rfb.addEventListener("connect", () => {
+        setConnectionState("connected");
+      });
+
+      rfb.addEventListener("disconnect", (ev: Event) => {
+        const detail = (ev as CustomEvent).detail;
+        rfbRef.current = null;
+        if (detail?.clean) {
+          setConnectionState("disconnected");
+        } else {
+          setConnectionState("error");
+        }
+      });
+
+      rfbRef.current = rfb;
+    } catch {
+      setConnectionState("error");
+    }
+  }, [instanceId, enabled]);
+
+  // Connect when enabled changes or reconnect is triggered
+  useEffect(() => {
+    if (enabled) {
+      connect();
+    } else {
+      if (rfbRef.current) {
+        try { rfbRef.current.disconnect(); } catch { /* ignore */ }
+        rfbRef.current = null;
+      }
+      setConnectionState("disconnected");
+    }
+
+    return () => {
+      if (rfbRef.current) {
+        try { rfbRef.current.disconnect(); } catch { /* ignore */ }
+        rfbRef.current = null;
+      }
+    };
+  }, [enabled, connect, connectTrigger]);
 
   const reconnect = useCallback(() => {
-    setConnectionState("connecting");
-    setReloadKey((k) => k + 1);
-    if (iframeRef.current) {
-      iframeRef.current.src = desktopUrl + `?_=${Date.now()}`;
-    }
-  }, [desktopUrl]);
+    setConnectTrigger((n) => n + 1);
+  }, []);
 
-  // Sync enabled flag with connection state
-  if (!enabled && connectionState !== "disconnected") {
-    setConnectionState("disconnected");
-  } else if (
-    enabled &&
-    connectionState === "disconnected" &&
-    iframeRef.current
-  ) {
-    setConnectionState("connecting");
-  }
+  const sendCtrlAltDel = useCallback(() => {
+    rfbRef.current?.sendCtrlAltDel();
+  }, []);
 
   return {
     connectionState,
-    desktopUrl: enabled ? desktopUrl : "",
-    setIframe,
-    onLoad,
-    onError,
+    containerRef,
     reconnect,
-    reloadKey,
+    sendCtrlAltDel,
   };
 }

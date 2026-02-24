@@ -5,4 +5,5 @@ exec s6-setuidgid claworc Xtigervnc :0 \
   -depth 24 \
   -rfbport 5900 \
   -SecurityTypes None \
-  -AlwaysShared
+  -AlwaysShared \
+  -BlacklistThreshold 0
