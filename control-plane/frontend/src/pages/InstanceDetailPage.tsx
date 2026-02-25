@@ -100,6 +100,14 @@ export default function InstanceDetailPage() {
   const [pendingSourceIPs, setPendingSourceIPs] = useState<string | null>(null);
   const [sourceIPError, setSourceIPError] = useState<string | null>(null);
 
+  // Timezone override editing state
+  const [editingTimezone, setEditingTimezone] = useState(false);
+  const [pendingTimezone, setPendingTimezone] = useState<string | null>(null);
+
+  // User-Agent override editing state
+  const [editingUserAgent, setEditingUserAgent] = useState(false);
+  const [pendingUserAgent, setPendingUserAgent] = useState<string | null>(null);
+
   // Update tab when hash changes
   useEffect(() => {
     const tab = getTabFromHash();
@@ -232,6 +240,32 @@ export default function InstanceDetailPage() {
         },
         onError: (error: any) => {
           setSourceIPError(error.response?.data?.detail || "Invalid IP configuration");
+        },
+      },
+    );
+  };
+
+  const handleSaveTimezone = () => {
+    if (pendingTimezone === null) return;
+    updateMutation.mutate(
+      { id: instanceId, payload: { timezone: pendingTimezone } },
+      {
+        onSuccess: () => {
+          setEditingTimezone(false);
+          setPendingTimezone(null);
+        },
+      },
+    );
+  };
+
+  const handleSaveUserAgent = () => {
+    if (pendingUserAgent === null) return;
+    updateMutation.mutate(
+      { id: instanceId, payload: { user_agent: pendingUserAgent } },
+      {
+        onSuccess: () => {
+          setEditingUserAgent(false);
+          setPendingUserAgent(null);
         },
       },
     );
@@ -379,6 +413,18 @@ export default function InstanceDetailPage() {
                     ? instance.vnc_resolution ?? ""
                     : "Default",
                 },
+                {
+                  label: "Timezone",
+                  value: instance.has_timezone_override
+                    ? instance.timezone ?? ""
+                    : "Default",
+                },
+                {
+                  label: "User-Agent",
+                  value: instance.has_user_agent_override
+                    ? instance.user_agent ?? ""
+                    : "Default",
+                },
                 { label: "Created", value: instance.created_at },
                 { label: "Updated", value: instance.updated_at },
               ].map((field) => (
@@ -510,6 +556,112 @@ export default function InstanceDetailPage() {
                   {updateMutation.isPending ? "Saving..." : "Save"}
                 </button>
               </div>
+            )}
+          </div>
+
+          {/* Timezone Override */}
+          <div className="bg-white rounded-lg border border-gray-200 p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-medium text-gray-900">
+                Timezone Override
+              </h3>
+              <button
+                type="button"
+                onClick={() => {
+                  if (editingTimezone) {
+                    setPendingTimezone(null);
+                  } else {
+                    setPendingTimezone(instance.timezone ?? "");
+                  }
+                  setEditingTimezone(!editingTimezone);
+                }}
+                className="text-xs text-blue-600 hover:text-blue-800"
+              >
+                {editingTimezone ? "Cancel" : "Edit"}
+              </button>
+            </div>
+
+            {editingTimezone ? (
+              <div className="space-y-3">
+                <input
+                  type="text"
+                  value={pendingTimezone ?? ""}
+                  onChange={(e) => setPendingTimezone(e.target.value)}
+                  placeholder="e.g., America/New_York (empty = use global default)"
+                  className="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+                <p className="text-xs text-gray-500">
+                  Leave empty to use the global default timezone. Changing timezone requires a container restart to take effect.
+                </p>
+                <div className="flex justify-end">
+                  <button
+                    onClick={handleSaveTimezone}
+                    disabled={updateMutation.isPending || pendingTimezone === null}
+                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    {updateMutation.isPending ? "Saving..." : "Save"}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500">
+                {instance.has_timezone_override
+                  ? instance.timezone
+                  : "Using global default"}
+              </p>
+            )}
+          </div>
+
+          {/* User-Agent Override */}
+          <div className="bg-white rounded-lg border border-gray-200 p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-medium text-gray-900">
+                User-Agent Override
+              </h3>
+              <button
+                type="button"
+                onClick={() => {
+                  if (editingUserAgent) {
+                    setPendingUserAgent(null);
+                  } else {
+                    setPendingUserAgent(instance.user_agent ?? "");
+                  }
+                  setEditingUserAgent(!editingUserAgent);
+                }}
+                className="text-xs text-blue-600 hover:text-blue-800"
+              >
+                {editingUserAgent ? "Cancel" : "Edit"}
+              </button>
+            </div>
+
+            {editingUserAgent ? (
+              <div className="space-y-3">
+                <input
+                  type="text"
+                  value={pendingUserAgent ?? ""}
+                  onChange={(e) => setPendingUserAgent(e.target.value)}
+                  placeholder="Leave empty to use global default or browser built-in"
+                  className="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+                <p className="text-xs text-gray-500">
+                  Custom User-Agent string for Chromium. Leave empty to use the global default (or browser built-in if no global default is set). Changing requires a container restart to take effect.
+                </p>
+                <div className="flex justify-end">
+                  <button
+                    onClick={handleSaveUserAgent}
+                    disabled={updateMutation.isPending || pendingUserAgent === null}
+                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    {updateMutation.isPending ? "Saving..." : "Save"}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500">
+                {instance.has_user_agent_override
+                  ? instance.user_agent
+                  : "Using global default"}
+              </p>
             )}
           </div>
 
