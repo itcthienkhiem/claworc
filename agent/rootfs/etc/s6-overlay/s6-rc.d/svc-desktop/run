@@ -22,7 +22,7 @@ if command -v google-chrome-stable >/dev/null 2>&1; then
   EXTRA_ARGS+=(--no-sandbox)
 elif command -v brave-browser >/dev/null 2>&1; then
   BROWSER=brave-browser
-  EXTRA_ARGS+=(--no-sandbox --test-type)
+  EXTRA_ARGS+=(--no-sandbox)
 else
   BROWSER=/usr/bin/chromium
 fi
@@ -39,6 +39,7 @@ while true; do
     --remote-debugging-address=127.0.0.1 \
     --disable-default-apps \
     --disable-features=CloseWindowWithLastTab \
+    --disable-blink-features=AutomationControlled \
     --disable-infobars \
     --disable-component-update \
     --load-extension=/opt/stealth-extension \
