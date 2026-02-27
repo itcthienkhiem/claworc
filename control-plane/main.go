@@ -317,15 +317,22 @@ func runCLICommand(command string) {
 
 	switch command {
 	case "create-admin":
-		user := &database.User{
-			Username:     *username,
-			PasswordHash: hash,
-			Role:         "admin",
+		if existing, _ := database.GetUserByUsername(*username); existing != nil {
+			if err := database.UpdateUserPassword(existing.ID, hash); err != nil {
+				log.Fatalf("Failed to update admin password: %v", err)
+			}
+			fmt.Printf("Admin user '%s' already exists — password updated.\n", *username)
+		} else {
+			user := &database.User{
+				Username:     *username,
+				PasswordHash: hash,
+				Role:         "admin",
+			}
+			if err := database.CreateUser(user); err != nil {
+				log.Fatalf("Failed to create admin: %v", err)
+			}
+			fmt.Printf("Admin user '%s' created successfully.\n", *username)
 		}
-		if err := database.CreateUser(user); err != nil {
-			log.Fatalf("Failed to create admin: %v", err)
-		}
-		fmt.Printf("Admin user '%s' created successfully.\n", *username)
 
 	case "reset-password":
 		user, err := database.GetUserByUsername(*username)

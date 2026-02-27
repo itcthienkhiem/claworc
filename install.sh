@@ -101,11 +101,16 @@ install_docker() {
 
     # --- Launch --------------------------------------------------------------
 
+    # Ensure the claworc network exists so the control-plane container can
+    # reach agent containers directly by IP (avoids 127.0.0.1 loopback issue).
+    docker network create claworc 2>/dev/null || true
+
     echo ""
     echo "Starting dashboard..."
     docker run -d \
         --platform linux/amd64 \
         --name "$CONTAINER_NAME" \
+        --network claworc \
         -p "$PORT:8000" \
         -v /var/run/docker.sock:/var/run/docker.sock \
         -v "$DATA_DIR":"$DATA_DIR" \

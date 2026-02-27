@@ -427,7 +427,14 @@ func (d *DockerOrchestrator) GetSSHAddress(ctx context.Context, instanceID uint)
 		return "", 0, fmt.Errorf("inspect container for instance %d: %w", instanceID, err)
 	}
 
-	// Use published host port for SSH (works on macOS where bridge IPs are unreachable)
+	// Prefer direct container IP on the claworc network (works when control-plane
+	// runs in Docker on the same network — standard docker-compose deployment).
+	if ep, ok := inspect.NetworkSettings.Networks[networkName]; ok && ep.IPAddress != "" {
+		return ep.IPAddress, 22, nil
+	}
+
+	// Fallback: published host port (works when control-plane runs natively on macOS
+	// where Docker bridge IPs are unreachable from the host).
 	if bindings, ok := inspect.NetworkSettings.Ports["22/tcp"]; ok && len(bindings) > 0 {
 		port := 0
 		fmt.Sscanf(bindings[0].HostPort, "%d", &port)
@@ -436,12 +443,6 @@ func (d *DockerOrchestrator) GetSSHAddress(ctx context.Context, instanceID uint)
 		}
 	}
 
-	// Fallback to container IP (works on Linux)
-	for _, net := range inspect.NetworkSettings.Networks {
-		if net.IPAddress != "" {
-			return net.IPAddress, 22, nil
-		}
-	}
 	return "", 0, fmt.Errorf("cannot determine SSH address for instance %d", instanceID)
 }
 

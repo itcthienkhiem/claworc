@@ -9,6 +9,12 @@ services:
     environment:
       - CLAWORC_DATA_PATH=/app/data
     restart: unless-stopped
+    networks:
+      - claworc
 
 volumes:
   claworc-data:
+
+networks:
+  claworc:
+    name: claworc   # exact name, no compose project prefix
